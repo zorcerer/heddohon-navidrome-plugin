@@ -1,0 +1,61 @@
+# Builds heddohon.ndp on every push and pull request, checks that the package
+# is the two files Navidrome reads, and keeps it as an artifact of the run.
+# The compiler is the `tinygo/tinygo` image, pinned in `build.sh`.
+#
+# `release.yml` calls this with the version of a tag, and attaches what it
+# builds to the release.
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+    inputs:
+      version:
+        description: The version the manifest carries, without the v.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.event.pull_request.number || github.ref }}-${{ inputs.version || 'dev' }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Unset outside a release, where `build.sh` writes 0.0.0-dev.
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # gofmt and vet from the image the plugin is compiled with.
+      - name: Format and vet
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/src -w /src tinygo/tinygo:0.42.0 \
+            sh -c 'test -z "$(gofmt -l .)" && GOOS=wasip1 GOARCH=wasm go vet .'
+
+      - name: Build heddohon.ndp
+        run: ./build.sh
+
+      # The manifest's permissions are what Navidrome's administrator is asked
+      # to grant. A change to them fails here until this list says the same.
+      - name: Check the package
+        run: |
+          unzip -l heddohon.ndp
+          test "$(unzip -Z1 heddohon.ndp | sort | tr '\n' ' ')" = "manifest.json plugin.wasm "
+          unzip -p heddohon.ndp manifest.json | jq -e '.permissions | keys == ["http", "scheduler", "scrobbleRetriever", "users"]'
+          unzip -p heddohon.ndp manifest.json | jq -e --arg version "${VERSION:-0.0.0-dev}" '.version == $version'
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: heddohon-ndp
+          path: heddohon.ndp
+          if-no-files-found: error

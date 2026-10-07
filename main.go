@@ -11,6 +11,9 @@
 // here. Navidrome makes a new instance for each call and nothing is kept
 // between two of them: where an import has got to is held by Heddohon, which
 // names the next timestamp it wants in each answer.
+//
+// The other end is Heddohon's route, src/routes/api/plugin/navidrome in
+// github.com/zorcerer/heddohon. The README has the messages between the two.
 package main
 
 import (

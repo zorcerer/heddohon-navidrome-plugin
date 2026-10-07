@@ -3,7 +3,7 @@
   "author": "zorcerer",
   "version": "0.0.0",
   "description": "Sends each play to Heddohon, whichever app made it, so its listening history and statistics cover every client. Sends an account's scrobble history when that account asks Heddohon to import it.",
-  "website": "https://github.com/zorcerer/heddohon",
+  "website": "https://github.com/zorcerer/heddohon-navidrome-plugin",
   "config": {
     "schema": {
       "type": "object",

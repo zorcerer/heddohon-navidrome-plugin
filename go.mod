@@ -1,4 +1,4 @@
-module github.com/zorcerer/heddohon/plugin/navidrome
+module github.com/zorcerer/heddohon-navidrome-plugin
 
 go 1.25
 

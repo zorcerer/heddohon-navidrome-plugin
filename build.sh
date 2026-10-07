@@ -2,7 +2,8 @@
 # Builds heddohon.ndp, the package Navidrome loads: the manifest and the
 # plugin compiled to WebAssembly, zipped. The file's name is the plugin's id
 # in Navidrome, so it carries no version; the manifest inside does, from
-# VERSION, or the repository's package.json with "-dev" where that is not set.
+# VERSION, or "0.0.0-dev" where that is not set. A release sets it from its
+# tag (.github/workflows/release.yml).
 #
 # Uses tinygo where it is installed (0.39 or later) and the tinygo/tinygo
 # image through Docker otherwise.
@@ -10,7 +11,7 @@ set -eu
 cd "$(dirname "$0")"
 
 TINYGO_IMAGE=tinygo/tinygo:0.42.0
-version="${VERSION:-$(sed -n 's/^[[:space:]]*"version": "\(.*\)",$/\1/p' ../../package.json)-dev}"
+version="${VERSION:-0.0.0-dev}"
 out="$PWD/heddohon.ndp"
 work="$(mktemp -d)"
 trap 'rm -rf "$work" plugin.wasm' EXIT

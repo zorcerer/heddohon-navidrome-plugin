@@ -1,5 +1,9 @@
 # The Heddohon plugin for Navidrome
 
+A plugin for [Navidrome](https://www.navidrome.org/) that tells
+[Heddohon](https://github.com/zorcerer/heddohon), a self-hosted music player
+for Navidrome, Subsonic and Jellyfin, what is played in every other app.
+
 Navidrome tells this plugin of every track a user finishes, whichever app
 played it, and the plugin tells Heddohon. With it:
 
@@ -19,8 +23,16 @@ played it, and the plugin tells Heddohon. With it:
   that turns on "Include what I play in other apps" under Settings, Account.
   Off until it does.
 
-It needs Navidrome 0.64 or later and a Heddohon that has
-`HEDDOHON_NAVIDROME_PLUGIN_TOKEN` set.
+It needs Navidrome 0.64 or later, and a Heddohon later than 0.6.0 (the `dev`
+image, until the release after it) that has `HEDDOHON_NAVIDROME_PLUGIN_TOKEN`
+set.
+
+The Heddohon side of it is in the main repository,
+[zorcerer/heddohon](https://github.com/zorcerer/heddohon): the route the plugin
+posts to (`src/routes/api/plugin/navidrome`), what is done with a request
+(`src/lib/server/plugin.ts`), and the tests that post what the plugin would.
+Its [Configuration guide](https://github.com/zorcerer/heddohon/wiki/Configuration#the-navidrome-plugin)
+has the same steps as below from Heddohon's side.
 
 ## Install
 
@@ -29,8 +41,10 @@ It needs Navidrome 0.64 or later and a Heddohon that has
    It must not be the value of `HEDDOHON_SECRET`.
 2. **Put `heddohon.ndp` in Navidrome's plugins folder**, which is `plugins`
    inside its data folder unless `Plugins.Folder` says otherwise. The file is
-   attached to each Heddohon release. Keep the name: it is the plugin's id.
-   Restart Navidrome, or run `navidrome plugin rescan`.
+   attached to each of this repository's
+   [releases](https://github.com/zorcerer/heddohon-navidrome-plugin/releases).
+   Keep the name: it is the plugin's id. Restart Navidrome, or run
+   `navidrome plugin rescan`.
 3. **In Navidrome, under Plugins, open Heddohon** and fill in:
    - **Heddohon address:** where Navidrome reaches Heddohon, such as
      `http://192.168.1.10:3000` or `https://music.example.com`.
@@ -66,8 +80,8 @@ the status Heddohon answered:
 - **403:** the address is not the one Heddohon knows itself by. Fill in
   "Heddohon's public address". Heddohon's log names the address it expects, in
   a `cross-origin-blocked` line, at `HEDDOHON_LOG_LEVEL=warn`.
-- **404:** `HEDDOHON_NAVIDROME_PLUGIN_TOKEN` is not set on that Heddohon, or
-  the address is another server's.
+- **404:** `HEDDOHON_NAVIDROME_PLUGIN_TOKEN` is not set on that Heddohon, the
+  Heddohon is 0.6.0 or earlier, or the address is another server's.
 - **301, 302, 308:** the address redirects, usually from http to https. Give
   the address it redirects to; a redirect is not followed.
 
@@ -97,15 +111,54 @@ The permissions it asks Navidrome for are in `manifest.json`, each with its
 reason. HTTP is asked for any host, since Heddohon is usually on a private
 address, which Navidrome otherwise refuses a plugin.
 
-What Heddohon does with a request, and what the token allows, is in
-[`SECURITY.md`](../../SECURITY.md#plays-from-the-navidrome-plugin).
+What Heddohon does with a request, and what the token allows, is in its
+[`SECURITY.md`](https://github.com/zorcerer/heddohon/blob/dev/SECURITY.md#plays-from-the-navidrome-plugin).
+A vulnerability in the plugin is reported as that file says.
+
+## The messages
+
+The plugin and Heddohon are released apart, so what passes between them is
+versioned. Every message is a `POST` to `/api/plugin/navidrome` on the address
+configured, with `Authorization: Bearer <token>`, an `Origin` header naming
+Heddohon's own address, and a JSON body `{ "v": 1, "type": ... }`:
+
+| `type` | With | When |
+| --- | --- | --- |
+| `plays` | `plays: [{ username, songId, at }]` | A play, as Navidrome reports the scrobble |
+| `poll` | nothing | Every 15 seconds |
+| `history` | `username`, `plays: [{ songId, at }]`, `more`, `failed` | A page of a user's scrobble history, oldest first, for a user the last answer named |
+| `playback` | `username`, `songId`, `state`, `positionMs`, `player`, `playerName` | What a client is playing: `state` is `starting`, `playing`, `paused`, `stopped` or `expired` |
+
+`at` is in Unix seconds. Every answer is
+`{ "wanted": [{ "username", "from" }] }`: the users whose history Heddohon is
+waiting for, each from a time in Unix seconds. Navidrome makes a new instance
+of a plugin for every call, so the plugin keeps nothing between two of them,
+and where an import has got to is held by Heddohon.
+
+Heddohon answers a `v` it does not know with 400, and a `type` it does not
+know likewise, which an older Heddohon does for a newer plugin's message. A
+change that an older Heddohon could misread takes a new `v`, which Heddohon
+then answers beside the old one. `protocol` in `main.go` and `PROTOCOL` in
+Heddohon's route change together.
 
 ## Build
 
 ```
-plugin/navidrome/build.sh
+./build.sh
 ```
 
 writes `heddohon.ndp` beside it, using TinyGo where it is installed and the
 `tinygo/tinygo` image through Docker otherwise. `VERSION=1.2.3` sets the
-version in the manifest.
+version in the manifest; without it the build is `0.0.0-dev`.
+
+Every push builds the package and keeps it as an artifact of the run
+(`.github/workflows/build.yml`). A pushed tag `v1.2.3` publishes a release
+with `heddohon.ndp`, version 1.2.3, attached (`release.yml`).
+
+Nothing here runs the plugin: that takes a Navidrome. Heddohon's suites post
+to its route what the plugin would post, and the plugin itself is tried
+against a real Navidrome before a release.
+
+## Licence
+
+MIT, as Heddohon is. See `LICENSE`.
