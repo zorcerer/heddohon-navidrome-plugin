@@ -23,9 +23,8 @@ played it, and the plugin tells Heddohon. With it:
   that turns on "Include what I play in other apps" under Settings, Account.
   Off until it does.
 
-It needs Navidrome 0.64 or later, and a Heddohon later than 0.6.0 (the `dev`
-image, until the release after it) that has `HEDDOHON_NAVIDROME_PLUGIN_TOKEN`
-set.
+It needs Navidrome 0.64 or later, and Heddohon 0.6.1 or later with
+`HEDDOHON_NAVIDROME_PLUGIN_TOKEN` set.
 
 The Heddohon side of it is in the main repository,
 [zorcerer/heddohon](https://github.com/zorcerer/heddohon): the route the plugin
@@ -112,7 +111,7 @@ reason. HTTP is asked for any host, since Heddohon is usually on a private
 address, which Navidrome otherwise refuses a plugin.
 
 What Heddohon does with a request, and what the token allows, is in its
-[`SECURITY.md`](https://github.com/zorcerer/heddohon/blob/dev/SECURITY.md#plays-from-the-navidrome-plugin).
+[`SECURITY.md`](https://github.com/zorcerer/heddohon/blob/main/SECURITY.md#plays-from-the-navidrome-plugin).
 A vulnerability in the plugin is reported as that file says.
 
 ## The messages
